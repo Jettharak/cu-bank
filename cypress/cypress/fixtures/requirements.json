@@ -1,0 +1,31 @@
+{
+  "source": "document/CU_Bank_instruction-683935-17926530828015.pdf, pages 1-4",
+  "register": {
+    "accountNumeric": "Your account ID should contain numbers only",
+    "accountLength": "Your account ID must be exactly 10 digits long",
+    "duplicate": "This account ID is already in use. Please choose another.",
+    "passwordNumeric": "Your password should contain numbers only",
+    "passwordLength": "Your password must be exactly 4 digits long",
+    "fullname": "Your fullname must be 30 characters or less, including spaces."
+  },
+  "login": {
+    "accountNumeric": "Your account ID should contain numbers only.",
+    "accountLength": "Your account ID must be exactly 10 digits long.",
+    "missing": "User not found. Please check your account ID.",
+    "passwordNumeric": "Your password should contain numbers only.",
+    "passwordLength": "Your password must be exactly 4 digits long.",
+    "incorrect": "Incorrect password. Please try again."
+  },
+  "amount": {
+    "numeric": "Invalid balance amount. Please enter a valid number.",
+    "integer": "The balance amount must be a whole number with no decimals.",
+    "positive": "The amount must be greater than 0. Please enter a positive number.",
+    "withdraw": "Your balance is not enough to complete the withdrawal.",
+    "transfer": "Your balance is not enough to complete the transfer.",
+    "billpayment": "Your balance is not enough to complete the bill payment."
+  },
+  "transfer": {
+    "missing": "We couldn't find the recipient's account. Please double-check the account ID.",
+    "self": "You cannot transfer to your own account."
+  }
+}

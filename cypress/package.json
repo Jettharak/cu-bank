@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test": "cypress run --spec cypress/e2e/spec.cy.js",
+    "test:reload": "cypress run --spec cypress/e2e/reload.cy.js",
+    "test:open": "cypress open"
+  },
+  "devDependencies": {
+    "cypress": "^15.21.1"
+  }
+}
