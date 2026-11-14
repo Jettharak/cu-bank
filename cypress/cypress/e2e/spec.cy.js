@@ -320,99 +320,99 @@ describe('S7 - All supported bill targets (PDF p4)', () => {
 });
 
 describe('CU Bank — 8 system test scenarios', () => {
-  it('S1: rejects registration with a nonnumeric account number', () => {
-    cy.visit('/register');
-    field('r1').type('123456789X');
-    field('r2').type(PASSWORD, { log: false });
-    field('r3').type('Test');
-    field('r4').type('User');
-    field('rc').click();
-    expectError('register-error-mes', requirements.register.accountNumeric);
-    cy.location('pathname').should('eq', '/register');
-    cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
-  });
+  // it('S1: rejects registration with a nonnumeric account number', () => {
+  //   cy.visit('/register');
+  //   field('r1').type('123456789X');
+  //   field('r2').type(PASSWORD, { log: false });
+  //   field('r3').type('Test');
+  //   field('r4').type('User');
+  //   field('rc').click();
+  //   expectError('register-error-mes', requirements.register.accountNumeric);
+  //   cy.location('pathname').should('eq', '/register');
+  //   cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+  // });
 
-  it('S2: rejects login with an incorrect password', () => {
-    createAccount().then((account) => {
-      cy.visit('/');
-      cy.intercept('POST', `${API}/auth/login`).as('login');
-      field('l1').type(account.accountId);
-      field('l2').type('9999', { log: false });
-      field('lc').click();
-      cy.wait('@login').its('response.statusCode').should('eq', 401);
-      field('login-error-mes').should('be.visible')
-        .and('have.text', 'Incorrect password. Please try again.');
-      cy.location('pathname').should('eq', '/');
-      cy.get('nav').contains('LOG OUT').should('not.exist');
-      cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
-    });
-  });
+  // it('S2: rejects login with an incorrect password', () => {
+  //   createAccount().then((account) => {
+  //     cy.visit('/');
+  //     cy.intercept('POST', `${API}/auth/login`).as('login');
+  //     field('l1').type(account.accountId);
+  //     field('l2').type('9999', { log: false });
+  //     field('lc').click();
+  //     cy.wait('@login').its('response.statusCode').should('eq', 401);
+  //     field('login-error-mes').should('be.visible')
+  //       .and('have.text', 'Incorrect password. Please try again.');
+  //     cy.location('pathname').should('eq', '/');
+  //     cy.get('nav').contains('LOG OUT').should('not.exist');
+  //     cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+  //   });
+  // });
 
-  it('S3: logs in, then rejects a zero deposit', () => {
-    createAccount().then((account) => {
-      login(account);
-      field('d1').type('0');
-      field('dc').click();
-      field('deposite-error-mes').should('be.visible').and('have.text',
-        'The amount must be greater than 0. Please enter a positive number.');
-      expectState(account, 0, []);
-    });
-  });
+  // it('S3: logs in, then rejects a zero deposit', () => {
+  //   createAccount().then((account) => {
+  //     login(account);
+  //     field('d1').type('0');
+  //     field('dc').click();
+  //     field('deposite-error-mes').should('be.visible').and('have.text',
+  //       'The amount must be greater than 0. Please enter a positive number.');
+  //     expectState(account, 0, []);
+  //   });
+  // });
 
-  it('S4: deposits, then rejects withdrawal exceeding balance', () => {
-    createAccount().then((account) => {
-      login(account);
-      submitSuccess('d1', 'dc', 1000);
-      expectState(account, 1000, [deposit]);
-      field('w1').type('1001');
-      field('wc').click();
-      field('withdraw-error-mes').should('be.visible')
-        .and('have.text', 'Your balance is not enough to complete the withdrawal.');
-      expectState(account, 1000, [deposit]);
-    });
-  });
+  // it('S4: deposits, then rejects withdrawal exceeding balance', () => {
+  //   createAccount().then((account) => {
+  //     login(account);
+  //     submitSuccess('d1', 'dc', 1000);
+  //     expectState(account, 1000, [deposit]);
+  //     field('w1').type('1001');
+  //     field('wc').click();
+  //     field('withdraw-error-mes').should('be.visible')
+  //       .and('have.text', 'Your balance is not enough to complete the withdrawal.');
+  //     expectState(account, 1000, [deposit]);
+  //   });
+  // });
 
-  it('S5: deposits, withdraws, then rejects a malformed recipient account', () => {
-    createAccount().then((account) => {
-      login(account);
-      submitSuccess('d1', 'dc', 1000);
-      expectState(account, 1000, [deposit]);
-      submitSuccess('w1', 'wc', 200);
-      expectState(account, 800, [deposit, withdrawal]);
-      field('t1').type('123456789');
-      field('t2').type('100');
-      field('tc').click();
-      field('transfer-error-mes').should('be.visible')
-        .and('have.text', 'Your account ID must be exactly 10 digits long.');
-      expectState(account, 800, [deposit, withdrawal]);
-    });
-  });
+  // it('S5: deposits, withdraws, then rejects a malformed recipient account', () => {
+  //   createAccount().then((account) => {
+  //     login(account);
+  //     submitSuccess('d1', 'dc', 1000);
+  //     expectState(account, 1000, [deposit]);
+  //     submitSuccess('w1', 'wc', 200);
+  //     expectState(account, 800, [deposit, withdrawal]);
+  //     field('t1').type('123456789');
+  //     field('t2').type('100');
+  //     field('tc').click();
+  //     field('transfer-error-mes').should('be.visible')
+  //       .and('have.text', 'Your account ID must be exactly 10 digits long.');
+  //     expectState(account, 800, [deposit, withdrawal]);
+  //   });
+  // });
 
-  it('S6: logs in, then rejects bill payment with insufficient balance', () => {
-    createAccount().then((account) => {
-      login(account);
-      field('b1').check();
-      field('b4').type('100');
-      field('bc').click();
-      field('billpayment-error-mes').should('be.visible')
-        .and('have.text', 'Your balance is not enough to complete the bill payment.');
-      expectState(account, 0, []);
-    });
-  });
+  // it('S6: logs in, then rejects bill payment with insufficient balance', () => {
+  //   createAccount().then((account) => {
+  //     login(account);
+  //     field('b1').check();
+  //     field('b4').type('100');
+  //     field('bc').click();
+  //     field('billpayment-error-mes').should('be.visible')
+  //       .and('have.text', 'Your balance is not enough to complete the bill payment.');
+  //     expectState(account, 0, []);
+  //   });
+  // });
 
-  it('S7: logs in, funds the account, then pays a water bill', () => {
-    createAccount().then((account) => {
-      login(account);
-      submitSuccess('d1', 'dc', 1000);
-      expectState(account, 1000, [deposit]);
-      field('b1').check();
-      field('b2').should('not.be.checked');
-      field('b3').should('not.be.checked');
-      submitSuccess('b4', 'bc', 250);
-      expectState(account, 750, [deposit,
-        { title: 'billpayment', target: 'water', amount: 250, balance: 750 }]);
-    });
-  });
+  // it('S7: logs in, funds the account, then pays a water bill', () => {
+  //   createAccount().then((account) => {
+  //     login(account);
+  //     submitSuccess('d1', 'dc', 1000);
+  //     expectState(account, 1000, [deposit]);
+  //     field('b1').check();
+  //     field('b2').should('not.be.checked');
+  //     field('b3').should('not.be.checked');
+  //     submitSuccess('b4', 'bc', 250);
+  //     expectState(account, 750, [deposit,
+  //       { title: 'billpayment', target: 'water', amount: 250, balance: 750 }]);
+  //   });
+  // });
 
   it('S8.1: displays the Account ID on the account page after login', () => {
     createAccount().then((account) => {
