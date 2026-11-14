@@ -446,15 +446,92 @@ describe('CU Bank — 8 system test scenarios', () => {
   //   });
   // });
 
-  it('S8.1: displays the Account ID on the account page after login', () => {
+  it('S8.1: shows every Account page element and value after login', () => {
+    // Expected labels come from the Account page in PDF Figure 3.
+    const detail = (label) => cy.contains('h2', new RegExp(`^${label}:$`)).should('be.visible').next('h1');
+    const amountInput = (cid, label) => {
+      field(cid).should('be.visible').and('have.attr', 'type', 'number')
+        .and('have.value', '').and('not.be.disabled');
+      field(cid).closest('label').should('contain.text', label);
+    };
+    const confirmButton = (cid) => field(cid).should('be.visible').and('have.text', 'Confirm').and('not.be.disabled');
+    const section = (title) => cy.contains('h2', new RegExp(`^${title}$`)).should('be.visible');
+
     createAccount().then((account) => {
       login(account);
-      cy.contains('h2', /^Account ID:$/).should('be.visible')
-        .next('h1').should('be.visible').and('have.text', account.accountId);
+
+      // Navigation bar after login
+      cy.location('pathname').should('match', /^\/account\/?$/);
+      cy.get('nav').contains('h1', 'CU Bank').should('be.visible');
+      cy.get('nav').contains('a', /^Account$/).should('be.visible').and('have.attr', 'href', '/account');
+      cy.get('nav').contains('a', /^LOG OUT$/).should('be.visible');
+      cy.get('nav').contains('LOG IN').should('not.exist');
+      cy.get('nav').contains('Register').should('not.exist');
+
+      // Account details (Account ID is checked last: it is the known DEF-07 failure)
+      detail('Name').should('be.visible').and('have.text', account.name);
+      detail('Balance').should('be.visible').and('have.text', '0');
+
+      // Deposit
+      section('Deposit');
+      amountInput('d1', 'Please put your amount:');
+      confirmButton('dc');
+
+      // Withdraw
+      section('Withdraw');
+      amountInput('w1', 'Please put your amount:');
+      confirmButton('wc');
+
+      // Transfer
+      section('Transfer');
+      field('t1').should('be.visible').and('have.attr', 'type', 'text')
+        .and('have.value', '').and('not.be.disabled');
+      field('t1').closest('label').should('contain.text', 'Please put target Account ID:');
+      amountInput('t2', 'Please put your amount:');
+      confirmButton('tc');
+
+      // Bill Payment: three targets, none selected yet
+      section('Bill Payment');
+      [['b1', 'water', 'Water Charge'], ['b2', 'electric', 'Electric Charge'], ['b3', 'phone', 'Phone Charge']]
+        .forEach(([cid, value, label]) => {
+          field(cid).should('be.visible').and('have.attr', 'type', 'radio')
+            .and('have.attr', 'name', 'billTarget').and('have.value', value).and('not.be.checked');
+          field(cid).parent().should('contain.text', label);
+        });
+      amountInput('b4', 'Please put your amount:');
+      confirmButton('bc');
+
+      // No error messages before any action
+      ['deposite-error-mes', 'withdraw-error-mes', 'transfer-error-mes', 'billpayment-error-mes']
+        .forEach((cid) => field(cid).should('not.exist'));
+
+      // History starts empty for a new account
+      cy.contains('.history-list h2', /^History$/).should('be.visible');
+      cy.get('.history-list > .account-form').should('not.exist');
+      readAccount(account).then((data) => {
+        expect(data.balance, 'new account balance').to.eq(0);
+        expect(data.transactions, 'new account history').to.have.length(0);
+      });
+
+      // After a deposit: balance and every field of the history entry
+      const startedAt = Date.now();
+      submitSuccess('d1', 'dc', 1000);
+      expectState(account, 1000, [deposit]);
+      cy.get('.history-list > .account-form > div').eq(0)
+        .contains('p', /^date:/).invoke('text').then((text) => {
+          const when = new Date(text.replace(/^date:\s*/, '')).getTime();
+          expect(Number.isNaN(when), 'history date is a valid date').to.eq(false);
+          expect(when, 'history date is the time of the deposit')
+            .to.be.within(startedAt - 60 * 1000, Date.now() + 60 * 1000);
+        });
+      detail('Name').should('have.text', account.name);
+
+      // Account ID (PDF Figure 3 shows it with its value)
+      detail('Account ID').should('be.visible').and('have.text', account.accountId);
     });
   });
 
-  it('S8.2: logs out through the UI, then re-logs in with the same account', () => {
+  it('S8.2 TC1: logs out through the UI, then re-logs in with the same account', () => {
     createAccount().then((account) => {
       login(account);
       expectState(account, 0, []);
@@ -470,6 +547,60 @@ describe('CU Bank — 8 system test scenarios', () => {
       login(account);
       cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
       expectState(account, 0, []);
+    });
+  });
+
+  it('S8.2 TC2: logs out through the UI, then logs in with a different account', () => {
+    createAccount().then((first) => {
+      createAccount().then((second) => {
+        login(first);
+        expectState(first, 0, []);
+        cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+
+        cy.get('nav').contains('LOG OUT').click();
+        cy.location('pathname').should('eq', '/');
+        cy.get('nav').contains('LOG IN').should('be.visible');
+        cy.get('nav').contains('LOG OUT').should('not.exist');
+        field('lc').should('be.visible');
+        cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+
+        login(second);
+        cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+        cy.contains('h1', second.name).should('be.visible');
+        cy.contains('h1', first.name).should('not.exist');
+        expectState(second, 0, []);
+      });
+    });
+  });
+
+  it('S8.2 TC3: logs out through the UI, then rejects a login with an incorrect password', () => {
+    createAccount().then((account) => {
+      login(account);
+      expectState(account, 0, []);
+      cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+
+      cy.get('nav').contains('LOG OUT').click();
+      cy.location('pathname').should('eq', '/');
+      cy.get('nav').contains('LOG IN').should('be.visible');
+      cy.get('nav').contains('LOG OUT').should('not.exist');
+      field('lc').should('be.visible');
+      cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+
+      const alias = `failedRelogin${++requestSequence}`;
+      cy.intercept({ method: 'POST', url: `${API}/auth/login`, times: 1 }).as(alias);
+      field('l1').type(account.accountId);
+      field('l2').type('9999', { log: false });
+      field('lc').click();
+      cy.wait(`@${alias}`).its('response.statusCode').should('eq', 401);
+      expectError('login-error-mes', requirements.login.incorrect);
+      cy.location('pathname').should('eq', '/');
+      cy.get('nav').contains('LOG IN').should('be.visible');
+      cy.get('nav').contains('LOG OUT').should('not.exist');
+      cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+      readAccount(account).then((data) => {
+        expect(data.balance, 'failed login must not change balance').to.eq(0);
+        expect(data.transactions, 'failed login must not change history').to.have.length(0);
+      });
     });
   });
 });
