@@ -36,7 +36,8 @@ Use a disposable test database for repeated runs. Do not run against production.
 | S5 | Login, deposit 1000, withdraw 200, transfer 100 to nine-digit account: reject; balance 800 |
 | S6 | Login with balance 0, pay water bill 100: reject; balance/history unchanged |
 | S7 | Login, deposit 1000, pay water bill 250: balance 750 and bill history |
-| S8 | Login as sender, deposit 1000, transfer 300; check sender 700, then login as recipient and check 300; verify both histories |
+| S8.1 | Login and verify the account page displays Account ID with the correct account number |
+| S8.2 | Login, click LOG OUT, verify the session is cleared, then re-login with the same account |
 
 Assertions cover visible error messages, login navigation, balances, history
 entries (type, target, amount, resulting balance), and persisted API state.

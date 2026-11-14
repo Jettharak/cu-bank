@@ -414,22 +414,30 @@ describe('CU Bank — 8 system test scenarios', () => {
     });
   });
 
-  it('S8: transfers and verifies both balances and histories', () => {
-    createAccount().then((sender) => {
-      createAccount().then((recipient) => {
-        login(sender);
-        submitSuccess('d1', 'dc', 1000);
-        expectState(sender, 1000, [deposit]);
-        field('t1').type(recipient.accountId);
-        submitSuccess('t2', 'tc', 300);
-        expectState(sender, 700, [deposit,
-          { title: 'transfer to', target: recipient.accountId, amount: 300, balance: 700 }]);
-        cy.clearLocalStorage();
-        cy.clearCookies();
-        login(recipient);
-        expectState(recipient, 300, [
-          { title: 'transfer from', target: sender.accountId, amount: 300, balance: 300 }]);
-      });
+  it('S8.1: displays the Account ID on the account page after login', () => {
+    createAccount().then((account) => {
+      login(account);
+      cy.contains('h2', /^Account ID:$/).should('be.visible')
+        .next('h1').should('be.visible').and('have.text', account.accountId);
+    });
+  });
+
+  it('S8.2: logs out through the UI, then re-logs in with the same account', () => {
+    createAccount().then((account) => {
+      login(account);
+      expectState(account, 0, []);
+      cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+
+      cy.get('nav').contains('LOG OUT').click();
+      cy.location('pathname').should('eq', '/');
+      cy.get('nav').contains('LOG IN').should('be.visible');
+      cy.get('nav').contains('LOG OUT').should('not.exist');
+      field('lc').should('be.visible');
+      cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+
+      login(account);
+      cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+      expectState(account, 0, []);
     });
   });
 });

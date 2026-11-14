@@ -1,11 +1,11 @@
 {
   "source": "document/CU_Bank_instruction-683935-17926530828015.pdf, pages 1-4",
   "register": {
-    "accountNumeric": "Your account ID should contain numbers only",
-    "accountLength": "Your account ID must be exactly 10 digits long",
+    "accountNumeric": "Your account ID should contain numbers only.",
+    "accountLength": "Your account ID must be exactly 10 digits long.",
     "duplicate": "This account ID is already in use. Please choose another.",
-    "passwordNumeric": "Your password should contain numbers only",
-    "passwordLength": "Your password must be exactly 4 digits long",
+    "passwordNumeric": "Your password should contain numbers only.",
+    "passwordLength": "Your password must be exactly 4 digits long.",
     "fullname": "Your fullname must be 30 characters or less, including spaces."
   },
   "login": {

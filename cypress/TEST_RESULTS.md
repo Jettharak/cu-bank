@@ -43,3 +43,5 @@ withdrawal, bill payment, transfer and account switching (14 reloads total).
 POST/PUT observers now use a unique one-request alias for each action, avoiding
 responses left over from a previous action. The full 47-case requirement suite
 has not been rerun after this latest helper change.
+
+S8 is now split into S8.1 (Account ID displayed after login) and S8.2 (UI logout and re-login with the same account). These revised cases have not been run; the results above refer to the previous scenario. Frontend and backend are unchanged.
