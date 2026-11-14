@@ -604,3 +604,96 @@ describe('CU Bank — 8 system test scenarios', () => {
     });
   });
 });
+
+// Valid-path cases from the report (Pending there): every input is in a valid class.
+describe('S1-S7 - Valid-path cases (all valid classes)', () => {
+  it('S1 TC10: registers with all valid inputs, then the new account can log in', () => {
+    const id = String(Cypress._.random(1000000000, 9999999999));
+    // Pre-condition: the account number is not registered yet.
+    cy.request({
+      method: 'POST', url: `${API}/auth/login`, failOnStatusCode: false,
+      body: { accountId: id, password: PASSWORD },
+    }).its('body.msg').should('eq', requirements.login.missing);
+
+    registerForm(id, PASSWORD, 'Test', 'User');
+    cy.window().then((win) => cy.stub(win, 'alert').as('registrationAlert'));
+    field('rc').click();
+    // Same expectation as the S1 valid-boundary test (DEF-04 closed: tests follow the app's alert).
+    cy.get('@registrationAlert').should('have.been.calledOnceWithExactly', 'Registration successful!');
+    cy.location('pathname').should('eq', '/');
+    field('lc').should('be.visible');
+
+    cy.request('POST', `${API}/auth/login`, { accountId: id, password: PASSWORD }).then(({ body }) => {
+      expect(body.success).to.eq(true);
+      expect(body.user.name).to.eq('Test User');
+      const account = { accountId: id, token: body.token, name: body.user.name };
+      login(account);
+      expectState(account, 0, []);
+    });
+  });
+
+  it('S2 TC9: logs in with a registered account and its password', () => {
+    createAccount().then((account) => {
+      login(account); // Account page shown, LOG OUT added, LOG IN and Register hidden
+      cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+      expectState(account, 0, []);
+    });
+  });
+
+  it('S3 TC5: deposits 500', () => {
+    createAccount().then((account) => {
+      login(account);
+      submitSuccess('d1', 'dc', 500);
+      expectState(account, 500, [{ title: 'deposit', target: '', amount: 500, balance: 500 }]);
+    });
+  });
+
+  it('S4 TC7: deposits 1000, then withdraws 300', () => {
+    createAccount().then((account) => {
+      login(account);
+      submitSuccess('d1', 'dc', 1000);
+      expectState(account, 1000, [deposit]);
+      submitSuccess('w1', 'wc', 300);
+      expectState(account, 700, [deposit, { title: 'withdraw', target: '', amount: 300, balance: 700 }]);
+    });
+  });
+
+  it('S5 TC12: transfers 300 from a balance of 800 to a registered account', () => {
+    createAccount().then((sender) => {
+      createAccount().then((recipient) => {
+        login(sender);
+        submitSuccess('d1', 'dc', 1000);
+        submitSuccess('w1', 'wc', 200);
+        expectState(sender, 800, [deposit, withdrawal]);
+        field('t1').type(recipient.accountId);
+        submitSuccess('t2', 'tc', 300);
+        expectState(sender, 500, [deposit, withdrawal,
+          { title: 'transfer to', target: recipient.accountId, amount: 300, balance: 500 }]);
+
+        cy.clearLocalStorage();
+        cy.clearCookies();
+        login(recipient);
+        expectState(recipient, 300, [
+          { title: 'transfer from', target: sender.accountId, amount: 300, balance: 300 }]);
+      });
+    });
+  });
+
+  [
+    { s6: 'TC8', s7: 'TC1', cid: 'b1', target: 'water' },
+    { s6: 'TC9', s7: 'TC2', cid: 'b2', target: 'electric' },
+    { s6: 'TC10', s7: 'TC3', cid: 'b3', target: 'phone' },
+  ].forEach(({ s6, s7, cid, target }) => {
+    it(`S6 ${s6} / S7 ${s7}: pays a ${target} bill of 250 from a balance of 1000`, () => {
+      createAccount().then((account) => {
+        login(account);
+        submitSuccess('d1', 'dc', 1000);
+        expectState(account, 1000, [deposit]);
+        field(cid).check();
+        cy.get('input[name="billTarget"]:checked').should('have.length', 1).and('have.value', target);
+        submitSuccess('b4', 'bc', 250);
+        expectState(account, 750, [deposit, { title: 'billpayment', target, amount: 250, balance: 750 }]);
+      });
+    });
+  });
+});
