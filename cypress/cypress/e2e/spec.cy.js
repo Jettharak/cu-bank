@@ -454,7 +454,7 @@ describe('CU Bank — 8 system test scenarios', () => {
     });
   });
 
-  it('S8.2: logs out through the UI, then re-logs in with the same account', () => {
+  it('S8.2 TC1: logs out through the UI, then re-logs in with the same account', () => {
     createAccount().then((account) => {
       login(account);
       expectState(account, 0, []);
@@ -470,6 +470,60 @@ describe('CU Bank — 8 system test scenarios', () => {
       login(account);
       cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
       expectState(account, 0, []);
+    });
+  });
+
+  it('S8.2 TC2: logs out through the UI, then logs in with a different account', () => {
+    createAccount().then((first) => {
+      createAccount().then((second) => {
+        login(first);
+        expectState(first, 0, []);
+        cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+
+        cy.get('nav').contains('LOG OUT').click();
+        cy.location('pathname').should('eq', '/');
+        cy.get('nav').contains('LOG IN').should('be.visible');
+        cy.get('nav').contains('LOG OUT').should('not.exist');
+        field('lc').should('be.visible');
+        cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+
+        login(second);
+        cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+        cy.contains('h1', second.name).should('be.visible');
+        cy.contains('h1', first.name).should('not.exist');
+        expectState(second, 0, []);
+      });
+    });
+  });
+
+  it('S8.2 TC3: logs out through the UI, then rejects a login with an incorrect password', () => {
+    createAccount().then((account) => {
+      login(account);
+      expectState(account, 0, []);
+      cy.window().its('localStorage').invoke('getItem', 'user').should('not.be.null');
+
+      cy.get('nav').contains('LOG OUT').click();
+      cy.location('pathname').should('eq', '/');
+      cy.get('nav').contains('LOG IN').should('be.visible');
+      cy.get('nav').contains('LOG OUT').should('not.exist');
+      field('lc').should('be.visible');
+      cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+
+      const alias = `failedRelogin${++requestSequence}`;
+      cy.intercept({ method: 'POST', url: `${API}/auth/login`, times: 1 }).as(alias);
+      field('l1').type(account.accountId);
+      field('l2').type('9999', { log: false });
+      field('lc').click();
+      cy.wait(`@${alias}`).its('response.statusCode').should('eq', 401);
+      expectError('login-error-mes', requirements.login.incorrect);
+      cy.location('pathname').should('eq', '/');
+      cy.get('nav').contains('LOG IN').should('be.visible');
+      cy.get('nav').contains('LOG OUT').should('not.exist');
+      cy.window().its('localStorage').invoke('getItem', 'user').should('be.null');
+      readAccount(account).then((data) => {
+        expect(data.balance, 'failed login must not change balance').to.eq(0);
+        expect(data.transactions, 'failed login must not change history').to.have.length(0);
+      });
     });
   });
 });
