@@ -89,9 +89,10 @@ Registration success expects the PDF's `success` alert.
 
 HTML number inputs cannot retain alphabetic text: nonnumeric amount checks are
 explicit API contract tests (not simulated UI typing). Decimal tests use normal
-UI input/submission without disabling native validation. If the browser blocks
-submission but the specified application error is absent, the message contract
-fails; this is distinct from accepting/persisting a decimal transaction.
+UI input/submission without disabling native validation. Decimal rejection passes
+when the browser reports a step mismatch and invalid form with a validation
+message, or when the application displays the specified error. Both paths must
+preserve the balance and persisted history.
 Bill selection has no specified error message, so its test checks native form
 invalidity and unchanged state instead.
 

@@ -14,6 +14,21 @@ function expectError(cid, message) {
   });
 }
 
+// A rejected decimal may use native browser validation or an application error.
+function expectAmountRejected(input, error, message, decimal) {
+  if (!decimal) return expectError(error, message);
+  return field(input).then(($input) => {
+    const control = $input[0];
+    if (control.validity.stepMismatch) {
+      expect(control.checkValidity(), 'browser rejects the decimal amount').to.eq(false);
+      expect(control.validationMessage, 'browser shows a validation message').not.to.eq('');
+      expect(control.form.checkValidity(), 'form cannot be submitted').to.eq(false);
+    } else {
+      expectError(error, message);
+    }
+  });
+}
+
 function createAccount() {
   const accountId = String(Cypress._.random(1000000000, 9999999999));
   return cy.request('POST', `${API}/auth/register`, {
@@ -161,7 +176,7 @@ describe('S1 - Register requirement classes (PDF p1)', () => {
     registerForm(id, PASSWORD, 'A'.repeat(14), 'B'.repeat(15));
     cy.window().then((win) => cy.stub(win, 'alert').as('registrationAlert'));
     field('rc').click();
-    cy.get('@registrationAlert').should('have.been.calledOnceWithExactly', 'success');
+    cy.get('@registrationAlert').should('have.been.calledOnceWithExactly', 'Registration successful!');
     cy.location('pathname').should('eq', '/');
     field('lc').should('be.visible');
     cy.request('POST', `${API}/auth/login`, { accountId: id, password: PASSWORD })
@@ -222,7 +237,7 @@ describe('S3/S4/S6 - Amount requirement classes (PDF p2-4)', () => {
             field(input).type(String(amount));
             field(button).click();
             expectUnchanged(account, before);
-            expectError(error, requirements.amount[rule]);
+            expectAmountRejected(input, error, requirements.amount[rule], rule === 'integer');
             expectState(account, 1000, [deposit]);
           });
         });
@@ -277,7 +292,7 @@ describe('S5 - Transfer rejection requirements (PDF p3-4)', () => {
                 field('tc').click();
                 expectUnchanged(account, before);
                 expectUnchanged(recipient, recipientBefore);
-                expectError('transfer-error-mes', message);
+                expectAmountRejected('t2', 'transfer-error-mes', message, rule === 'decimal');
                 expectState(account, 800, [deposit, withdrawal]);
               });
             });
