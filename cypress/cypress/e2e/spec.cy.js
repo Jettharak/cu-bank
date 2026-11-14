@@ -219,21 +219,20 @@ describe('S2 - Login requirement classes (PDF p2)', () => {
   });
 });
 
-describe('S3/S4/S6 - Amount requirement classes (PDF p2-4)', () => {
+describe('S3/S4 - Amount requirement classes (PDF p2-4)', () => {
   [
     { scenario: 'S3', action: 'deposit', input: 'd1', button: 'dc', error: 'deposite-error-mes' },
     { scenario: 'S4', action: 'withdraw', input: 'w1', button: 'wc', error: 'withdraw-error-mes' },
-    { scenario: 'S6', action: 'billpayment', input: 'b4', button: 'bc', error: 'billpayment-error-mes' },
   ].forEach(({ scenario, action, input, button, error }) => {
     const cases = [[-1, 'positive'], [1.5, 'integer']];
     if (action !== 'deposit') cases.push([0, 'positive'], [1000, action]);
+    if (action === 'withdraw') cases.push([1001, 'withdraw']);
     cases.forEach(([amount, rule]) => {
       it(`${scenario} ${action} rejects ${amount} (PDF ${rule})`, () => {
         createAccount().then((account) => {
           login(account);
           submitSuccess('d1', 'dc', 1000);
           readAccount(account).then((before) => {
-            if (action === 'billpayment') field('b1').check();
             field(input).type(String(amount));
             field(button).click();
             expectUnchanged(account, before);
@@ -253,7 +252,7 @@ describe('S3/S4/S6 - Amount requirement classes (PDF p2-4)', () => {
           cy.request({
             method: 'PUT', url: `${API}/transactions/`, failOnStatusCode: false,
             headers: { Authorization: `Bearer ${account.token}` },
-            body: { action, balance: 'abc', ...(action === 'billpayment' ? { target: 'water' } : {}) },
+            body: { action, balance: 'abc' },
           }).then((response) => {
             expect(response.status).to.eq(400);
             expect(response.body.success).to.eq(false);
@@ -314,6 +313,24 @@ describe('S7 - All supported bill targets (PDF p4)', () => {
         submitSuccess('b4', 'bc', 250);
         expectState(account, 750, [deposit,
           { title: 'billpayment', target, amount: 250, balance: 750 }]);
+      });
+    });
+  });
+
+});
+
+describe('S6 - Bill payment rejection', () => {
+  it('S6 rejects bill payment of 1001 when balance is 1000', () => {
+    createAccount().then((account) => {
+      login(account);
+      submitSuccess('d1', 'dc', 1000);
+      readAccount(account).then((before) => {
+        field('b1').check();
+        field('b4').type('1001');
+        field('bc').click();
+        expectError('billpayment-error-mes', requirements.amount.billpayment);
+        expectUnchanged(account, before);
+        expectState(account, 1000, [deposit]);
       });
     });
   });
